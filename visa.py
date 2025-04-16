@@ -273,6 +273,13 @@ if __name__ == "__main__":
 
         except Exception as e:
             logger.error(f"❌ 脚本异常: {e}")
+            if "session" in str(e).lower():
+                logger.warning("Session invalid，重新登录中...")
+                send_notification("Session invalid, re-login...")
+                login()
+                time.sleep(STEP_TIME)
+                retry_count = 0
+                continue
             retry_count += 1
             time.sleep(EXCEPTION_TIME)
 
