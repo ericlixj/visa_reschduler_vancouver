@@ -19,7 +19,6 @@ from selenium.webdriver.chrome.options import Options
 
 from sendmail import send_email
 
-
 # 日志配置
 log_dir = '/root/deploy/logs'
 os.makedirs(log_dir, exist_ok=True)
@@ -35,7 +34,6 @@ logging.basicConfig(
 )
 
 logger = logging.getLogger(__name__)
-
 
 config = configparser.ConfigParser()
 config.read('config.ini')
@@ -56,24 +54,25 @@ HUB_ADDRESS = config['CHROMEDRIVER']['HUB_ADDRESS']
 
 REGEX_CONTINUE = "//a[contains(text(),'Continue')]"
 
+# 自定义刷号时间段 (小时制)
+ACTIVE_TIME_SLOTS = [(6, 8), (11, 13), (18, 20), (23, 1)]
+
 def MY_CONDITION(month, day): return True
 
 STEP_TIME = 1
-RETRY_TIME = 1*10
-EXCEPTION_TIME = 1*30
-COOLDOWN_TIME = 1*60
+RETRY_TIME = 10 * 60  # 10 分钟
+EXCEPTION_TIME = 30
+COOLDOWN_TIME = 60
 
 DATE_URL = f"https://ais.usvisa-info.com/{COUNTRY_CODE}/niv/schedule/{SCHEDULE_ID}/appointment/days/{FACILITY_ID}.json?appointments[expedite]=false"
 TIME_URL = f"https://ais.usvisa-info.com/{COUNTRY_CODE}/niv/schedule/{SCHEDULE_ID}/appointment/times/{FACILITY_ID}.json?date=%s&appointments[expedite]=false"
 APPOINTMENT_URL = f"https://ais.usvisa-info.com/{COUNTRY_CODE}/niv/schedule/{SCHEDULE_ID}/appointment"
 EXIT = False
 
-
 def send_notification(msg):
     logger.info(f"发送通知: {msg}")
     subject = "Visa Appointment Notification"
     send_email(subject, msg)
-
 
 def get_driver():
     chrome_options = Options()
@@ -87,18 +86,15 @@ def get_driver():
     service = Service("/usr/local/bin/chromedriver")
     return webdriver.Chrome(service=service, options=chrome_options)
 
-
-
-
 driver = None
+
 def login():
-    global driver  # 声明全局，重新赋值
-    driver = get_driver()  # 每次 login 都初始化新 driver
+    global driver
+    driver = get_driver()
 
     driver.get(f"https://ais.usvisa-info.com/en-ca/niv/users/sign_in")
     time.sleep(STEP_TIME)
     do_login_action()
-
 
 def do_login_action():
     logger.info("输入邮箱")
@@ -132,7 +128,6 @@ def do_login_action():
             logger.info(f"_yatri_session={yatri_session}")
             break
 
-
 def get_date():
     cookie_dict = {c['name']: c['value'] for c in driver.get_cookies()}
     cookie_string = "; ".join([f"{k}={v}" for k, v in cookie_dict.items()])
@@ -164,7 +159,6 @@ def get_date():
         time.sleep(STEP_TIME * 3)
         return get_date()
 
-
 def get_time(date):
     time_url = TIME_URL % date
     driver.get(time_url)
@@ -173,7 +167,6 @@ def get_time(date):
     time_str = data.get("available_times")[-1]
     logger.info(f"获取时间成功: {date} {time_str}")
     return time_str
-
 
 def reschedule(date):
     global EXIT
@@ -207,14 +200,6 @@ def reschedule(date):
         msg = f"❌ 预约修改失败: {date} {time_str}"
         send_notification(msg)
 
-
-def is_error():
-    return "error" not in driver.page_source
-
-
-last_seen = None
-
-
 def get_available_date(dates):
     global last_seen
 
@@ -234,6 +219,16 @@ def get_available_date(dates):
                 last_seen = date
                 return date
 
+def within_active_time():
+    now_hour = datetime.now().hour
+    for start, end in ACTIVE_TIME_SLOTS:
+        if start < end:
+            if start <= now_hour < end:
+                return True
+        else:
+            if now_hour >= start or now_hour < end:
+                return True
+    return False
 
 if __name__ == "__main__":
     logger.info("启动，模拟登录...")
@@ -243,6 +238,11 @@ if __name__ == "__main__":
         if retry_count > 6:
             break
         try:
+            if not within_active_time():
+                logger.info("⏳ 当前时间不在刷号时段内，等待下次...")
+                time.sleep(RETRY_TIME)
+                continue
+
             logger.info("--------开始检查--------")
             logger.info(f"当前时间：{datetime.today()}")
             logger.info(f"重试次数: {retry_count}")
