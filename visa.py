@@ -88,10 +88,13 @@ def get_driver():
     return webdriver.Chrome(service=service, options=chrome_options)
 
 
-driver = get_driver()
 
 
+driver = None
 def login():
+    global driver  # 声明全局，重新赋值
+    driver = get_driver()  # 每次 login 都初始化新 driver
+    
     driver.get(f"https://ais.usvisa-info.com/en-ca/niv/users/sign_in")
     time.sleep(STEP_TIME)
     do_login_action()
