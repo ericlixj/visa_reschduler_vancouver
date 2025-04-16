@@ -1,9 +1,11 @@
 # -*- coding: utf8 -*-
 
+import os
 import time
 import json
 import random
 import platform
+import logging
 import configparser
 from datetime import datetime
 
@@ -13,10 +15,26 @@ from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.ui import WebDriverWait as Wait
 from selenium.webdriver.common.by import By
-
-from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.chrome.options import Options
+
 from sendmail import send_email
+
+
+# 日志配置
+log_dir = '/root/deploy/logs'
+os.makedirs(log_dir, exist_ok=True)
+log_path = os.path.join(log_dir, 'visa.log')
+
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s [%(levelname)s] %(message)s',
+    handlers=[
+        logging.FileHandler(log_path, mode='a', encoding='utf-8'),
+        logging.StreamHandler()
+    ]
+)
+
+logger = logging.getLogger(__name__)
 
 
 config = configparser.ConfigParser()
@@ -26,7 +44,7 @@ USERNAME = config['USVISA']['USERNAME']
 PASSWORD = config['USVISA']['PASSWORD']
 SCHEDULE_ID = config['USVISA']['SCHEDULE_ID']
 MY_SCHEDULE_DATE = config['USVISA']['MY_SCHEDULE_DATE']
-COUNTRY_CODE = config['USVISA']['COUNTRY_CODE'] 
+COUNTRY_CODE = config['USVISA']['COUNTRY_CODE']
 FACILITY_ID = config['USVISA']['FACILITY_ID']
 
 SENDGRID_API_KEY = config['SENDGRID']['SENDGRID_API_KEY']
@@ -38,14 +56,12 @@ HUB_ADDRESS = config['CHROMEDRIVER']['HUB_ADDRESS']
 
 REGEX_CONTINUE = "//a[contains(text(),'Continue')]"
 
+def MY_CONDITION(month, day): return True
 
-# def MY_CONDITION(month, day): return int(month) == 11 and int(day) >= 5
-def MY_CONDITION(month, day): return True # No custom condition wanted for the new scheduled date
-
-STEP_TIME = 1  # time between steps (interactions with forms): 0.5 seconds
-RETRY_TIME = 1*10  # wait time between retries/checks for available dates: 10 minutes
-EXCEPTION_TIME = 1*30  # wait time when an exception occurs: 30 minutes
-COOLDOWN_TIME = 1*60  # wait time when temporary banned (empty list): 60 minutes
+STEP_TIME = 1
+RETRY_TIME = 1*10
+EXCEPTION_TIME = 1*30
+COOLDOWN_TIME = 1*60
 
 DATE_URL = f"https://ais.usvisa-info.com/{COUNTRY_CODE}/niv/schedule/{SCHEDULE_ID}/appointment/days/{FACILITY_ID}.json?appointments[expedite]=false"
 TIME_URL = f"https://ais.usvisa-info.com/{COUNTRY_CODE}/niv/schedule/{SCHEDULE_ID}/appointment/times/{FACILITY_ID}.json?date=%s&appointments[expedite]=false"
@@ -54,9 +70,8 @@ EXIT = False
 
 
 def send_notification(msg):
-    print(f"Sending notification: {msg}")
+    logger.info(f"发送通知: {msg}")
     subject = "Visa Appointment Notification"
-
     send_email(subject, msg)
 
 
@@ -69,8 +84,9 @@ def get_driver():
     chrome_options.add_argument("window-size=1920,1080")
     chrome_options.add_argument("user-agent=Mozilla/5.0")
 
-    service = Service("/usr/local/bin/chromedriver")  # 这里填你实际的路径
+    service = Service("/usr/local/bin/chromedriver")
     return webdriver.Chrome(service=service, options=chrome_options)
+
 
 driver = get_driver()
 
@@ -78,66 +94,42 @@ driver = get_driver()
 def login():
     driver.get(f"https://ais.usvisa-info.com/en-ca/niv/users/sign_in")
     time.sleep(STEP_TIME)
-
-    # print(driver.page_source) 
-
-
-    # a = driver.find_element(By.XPATH, '//a[@class="down-arrow bounce"]')
-    # a.click()
-    # time.sleep(STEP_TIME)
-
-    # print("Login start...")
-    # href = driver.find_element(By.XPATH, '//*[@id="header"]/nav/div[1]/div[1]/div[2]/div[1]/ul/li[3]/a')
-   
-    # href.click()
-    # time.sleep(STEP_TIME)
-    # Wait(driver, 60).until(EC.presence_of_element_located((By.NAME, "commit")))
-
-    # print("\tclick bounce")
-    # a = driver.find_element(By.XPATH, '//a[@class="down-arrow bounce"]')
-    # a.click()
-    # time.sleep(STEP_TIME)
-
     do_login_action()
 
 
 def do_login_action():
-    print("\tinput email")
+    logger.info("输入邮箱")
     user = driver.find_element(By.ID, 'user_email')
     user.send_keys(USERNAME)
-    # print(f"\tUSERNAME: {USERNAME}")
     time.sleep(random.randint(1, 3))
 
-    print("\tinput pwd")
+    logger.info("输入密码")
     pw = driver.find_element(By.ID, 'user_password')
     pw.send_keys(PASSWORD)
-    # print(f"\tPASSWORD: {PASSWORD}")
     time.sleep(random.randint(1, 3))
 
-    print("\tclick privacy")
+    logger.info("勾选隐私条款")
     box = driver.find_element(By.CLASS_NAME, 'icheckbox')
-    box .click()
+    box.click()
     time.sleep(random.randint(1, 3))
 
-    print("\tcommit")
+    logger.info("点击登录")
     btn = driver.find_element(By.NAME, 'commit')
     btn.click()
     time.sleep(random.randint(1, 3))
 
-    Wait(driver, 60).until(
-        EC.presence_of_element_located((By.XPATH, REGEX_CONTINUE)))
-    print("\tlogin successful!")
+    Wait(driver, 60).until(EC.presence_of_element_located((By.XPATH, REGEX_CONTINUE)))
+    logger.info("登录成功")
 
     cookies = driver.get_cookies()
     for cookie in cookies:
         if cookie['name'] == '_yatri_session':
             yatri_session = cookie['value']
-            print(f"_yatri_session={yatri_session}")
+            logger.info(f"_yatri_session={yatri_session}")
             break
 
 
 def get_date():
-    # 从 selenium 获取当前 cookie 信息并转为请求头中的 Cookie 字符串
     cookie_dict = {c['name']: c['value'] for c in driver.get_cookies()}
     cookie_string = "; ".join([f"{k}={v}" for k, v in cookie_dict.items()])
 
@@ -149,24 +141,24 @@ def get_date():
     }
 
     try:
-        print(f"📡 请求可预约日期: {DATE_URL}")
+        logger.info(f"📡 请求可预约日期: {DATE_URL}")
         response = requests.get(DATE_URL, headers=headers, timeout=30)
-        #if response contains("session expired"),login again
-        if response.text.find("session expired") != -1:
-            print("Session expired, re-login...")
-            send_notification("Session expired, re-login...")
+
+        if response.status_code == 401 or "session expired" in response.text.lower():
+            logger.warning("Session expired or unauthorized (401)，重新登录中...")
+            send_notification("Session expired or unauthorized, re-login...")
             login()
             time.sleep(STEP_TIME)
             return get_date()
 
-        response.raise_for_status()  # 如果返回非 2xx 状态码，会抛出异常
+        response.raise_for_status()
         date_data = response.json()
         return date_data
 
     except requests.exceptions.RequestException as e:
-        print(f"⚠️ 请求异常: {e}")
+        logger.warning(f"⚠️ 请求异常: {e}")
         time.sleep(STEP_TIME * 3)
-        return get_date()  # 递归重试
+        return get_date()
 
 
 def get_time(date):
@@ -174,16 +166,16 @@ def get_time(date):
     driver.get(time_url)
     content = driver.find_element(By.TAG_NAME, 'pre').text
     data = json.loads(content)
-    time = data.get("available_times")[-1]
-    print(f"Got time successfully! {date} {time}")
-    return time
+    time_str = data.get("available_times")[-1]
+    logger.info(f"获取时间成功: {date} {time_str}")
+    return time_str
 
 
 def reschedule(date):
     global EXIT
-    print(f"Starting Reschedule ({date})")
+    logger.info(f"尝试重新预约: {date}")
 
-    time = get_time(date)
+    time_str = get_time(date)
     driver.get(APPOINTMENT_URL)
 
     data = {
@@ -193,7 +185,7 @@ def reschedule(date):
         "use_consulate_appointment_capacity": driver.find_element(by=By.NAME, value='use_consulate_appointment_capacity').get_attribute('value'),
         "appointments[consulate_appointment][facility_id]": FACILITY_ID,
         "appointments[consulate_appointment][date]": date,
-        "appointments[consulate_appointment][time]": time,
+        "appointments[consulate_appointment][time]": time_str,
     }
 
     headers = {
@@ -203,27 +195,17 @@ def reschedule(date):
     }
 
     r = requests.post(APPOINTMENT_URL, headers=headers, data=data)
-    if(r.text.find('Successfully Scheduled') != -1):
-        msg = f"Rescheduled Successfully! {date} {time}"
+    if "Successfully Scheduled" in r.text:
+        msg = f"🎉 预约修改成功: {date} {time_str}"
         send_notification(msg)
         EXIT = True
     else:
-        msg = f"Reschedule Failed. {date} {time}"
+        msg = f"❌ 预约修改失败: {date} {time_str}"
         send_notification(msg)
 
 
 def is_error():
-    content = driver.page_source
-    if(content.find("error") != -1):
-        return False
-    return True
-
-
-def print_dates(dates):
-    print("Available dates:")
-    for d in dates:
-        print("%s \t business_day: %s" % (d.get('date'), d.get('business_day')))
-    print()
+    return "error" not in driver.page_source
 
 
 last_seen = None
@@ -236,59 +218,63 @@ def get_available_date(dates):
         my_date = datetime.strptime(MY_SCHEDULE_DATE, "%Y-%m-%d")
         new_date = datetime.strptime(date, "%Y-%m-%d")
         result = my_date > new_date
-        print(f'Is {my_date} > {new_date}:\t{result}')
+        logger.info(f"是否找到更早时间: {my_date} > {new_date} = {result}")
         return result
 
-    print("Checking for an earlier date:")
+    logger.info("正在检查是否有更早日期")
     for d in dates:
         date = d.get('date')
         if is_earlier(date) and date != last_seen:
             _, month, day = date.split('-')
-            if(MY_CONDITION(month, day)):
+            if MY_CONDITION(month, day):
                 last_seen = date
                 return date
 
 
 if __name__ == "__main__":
-    print("启动，模拟登录...")
+    logger.info("启动，模拟登录...")
     login()
-    print("登录成功！")
+    logger.info("登录成功！")
     send_notification("Login successful!")
+
     retry_count = 0
-    while 1:
+    while True:
         if retry_count > 6:
             break
         try:
-            print("--------启动----------")
-            print(f"当前时间：{datetime.today()}")
-            print(f"Retry count: {retry_count}")
+            logger.info("--------开始检查--------")
+            logger.info(f"当前时间：{datetime.today()}")
+            logger.info(f"重试次数: {retry_count}")
+
             dates = get_date()[:5]
-            print(f"获得有效日期successfully! {dates}")
+            logger.info(f"获取可用日期成功: {dates}")
+
             if dates:
                 earliest = dates[0].get('date')
-                print(f"📆 当前查到的最早预约时间：{earliest}")
+                logger.info(f"📆 当前查到的最早预约时间：{earliest}")
             else:
-                print("⚠️ 当前没有可用的预约日期，重试中...")
+                logger.warning("⚠️ 暂无可预约日期，等待重试")
                 time.sleep(COOLDOWN_TIME)
                 continue
+
             date = get_available_date(dates)
-            
+
             if date:
-                print(f"🎯 恭喜！找到了更早的新日期: {date}")
+                logger.info(f"🎯 找到更早的预约时间: {date}")
                 reschedule(date)
                 time.sleep(COOLDOWN_TIME)
             else:
-                print("🔍 没有比原计划更早的日期可用，重试中...")
+                logger.info("🔍 暂无更早的预约时间，等待重试")
                 time.sleep(COOLDOWN_TIME)
-                continue
 
-            if(EXIT):
-                print("------------------exit")
+            if EXIT:
+                logger.info("✅ 已成功预约，退出脚本")
                 break
 
-        except:
+        except Exception as e:
+            logger.error(f"❌ 脚本异常: {e}")
             retry_count += 1
             time.sleep(EXCEPTION_TIME)
 
-    if(not EXIT):
+    if not EXIT:
         send_notification("HELP! Crashed.")
