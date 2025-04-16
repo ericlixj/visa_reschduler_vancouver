@@ -94,7 +94,7 @@ driver = None
 def login():
     global driver  # 声明全局，重新赋值
     driver = get_driver()  # 每次 login 都初始化新 driver
-    
+
     driver.get(f"https://ais.usvisa-info.com/en-ca/niv/users/sign_in")
     time.sleep(STEP_TIME)
     do_login_action()
@@ -123,7 +123,8 @@ def do_login_action():
 
     Wait(driver, 60).until(EC.presence_of_element_located((By.XPATH, REGEX_CONTINUE)))
     logger.info("登录成功")
-
+    send_notification("登录成功!")
+    time.sleep(STEP_TIME)
     cookies = driver.get_cookies()
     for cookie in cookies:
         if cookie['name'] == '_yatri_session':
@@ -237,9 +238,6 @@ def get_available_date(dates):
 if __name__ == "__main__":
     logger.info("启动，模拟登录...")
     login()
-    logger.info("登录成功！")
-    send_notification("Login successful!")
-
     retry_count = 0
     while True:
         if retry_count > 6:
