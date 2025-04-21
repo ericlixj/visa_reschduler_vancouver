@@ -54,8 +54,18 @@ HUB_ADDRESS = config['CHROMEDRIVER']['HUB_ADDRESS']
 
 REGEX_CONTINUE = "//a[contains(text(),'Continue')]"
 
-# 自定义刷号时间段 (小时制)
-ACTIVE_TIME_SLOTS = [(6, 8), (11, 13), (18, 20), (23, 1)]
+# 活跃刷 slot 的时间段，按小时（24小时制）
+# 示例为：(起始小时, 结束小时)，表示每天在这些时间段内刷 slot
+
+ACTIVE_TIME_SLOTS = [
+    (0, 2),    # 凌晨 slot 重置
+    (5, 7),    # 清晨系统处理
+    (8, 10),   # 上午使馆工作时间开始
+    (11, 13),  # 中午可能释放 slot
+    (16, 18),  # 下午美国办公时间段
+    (20, 22),  # 晚上高峰期
+]
+
 
 def MY_CONDITION(month, day): return True
 
