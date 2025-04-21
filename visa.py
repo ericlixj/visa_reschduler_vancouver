@@ -60,7 +60,7 @@ ACTIVE_TIME_SLOTS = [(6, 8), (11, 13), (18, 20), (23, 1)]
 def MY_CONDITION(month, day): return True
 
 STEP_TIME = 1
-RETRY_TIME = 10 * 60  # 10 分钟
+RETRY_TIME = 1 * 10  # 10 秒钟
 EXCEPTION_TIME = 30
 COOLDOWN_TIME = 60
 
