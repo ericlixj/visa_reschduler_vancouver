@@ -135,7 +135,7 @@ def do_login_action():
     for cookie in cookies:
         if cookie['name'] == '_yatri_session':
             yatri_session = cookie['value']
-            logger.info(f"_yatri_session={yatri_session}")
+            # logger.info(f"_yatri_session={yatri_session}")
             break
 
 def get_date():
