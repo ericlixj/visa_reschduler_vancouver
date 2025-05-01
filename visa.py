@@ -241,7 +241,14 @@ def within_active_time():
     return False
 
 if __name__ == "__main__":
-    logger.info("启动，模拟登录...")
+    logger.info("启动，等待进入刷号时间段...")
+
+    # 登录前先等到活跃时间段
+    while not within_active_time():
+        logger.info("⏳ 当前时间不在刷号时段内，等待下次...")
+        time.sleep(RETRY_TIME)
+
+    logger.info("当前时间在刷号时段内，启动模拟登录...")
     login()
     retry_count = 0
     while True:
