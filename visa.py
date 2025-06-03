@@ -8,6 +8,7 @@ import platform
 import logging
 import configparser
 from datetime import datetime
+import random
 
 import requests
 from selenium import webdriver
@@ -69,10 +70,12 @@ ACTIVE_TIME_SLOTS = [
 
 def MY_CONDITION(month, day): return True
 
-STEP_TIME = 100/1000
-RETRY_TIME = 1 * 10  # 10 秒钟
-EXCEPTION_TIME = 30
-COOLDOWN_TIME = 60
+def get_cooldown():
+    return random.randint(2, 6)
+
+STEP_TIME = 0.3
+RETRY_TIME = 2
+EXCEPTION_TIME = 5
 
 DATE_URL = f"https://ais.usvisa-info.com/{COUNTRY_CODE}/niv/schedule/{SCHEDULE_ID}/appointment/days/{FACILITY_ID}.json?appointments[expedite]=false"
 TIME_URL = f"https://ais.usvisa-info.com/{COUNTRY_CODE}/niv/schedule/{SCHEDULE_ID}/appointment/times/{FACILITY_ID}.json?date=%s&appointments[expedite]=false"
@@ -91,7 +94,12 @@ def get_driver():
     chrome_options.add_argument("--no-sandbox")
     chrome_options.add_argument("--disable-dev-shm-usage")
     chrome_options.add_argument("window-size=1920,1080")
-    chrome_options.add_argument("user-agent=Mozilla/5.0")
+    USER_AGENTS = [
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64)...",
+        "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)...",
+        "Mozilla/5.0 (X11; Linux x86_64)...",
+    ]
+    chrome_options.add_argument(f"user-agent={random.choice(USER_AGENTS)}")
 
     service = Service("/usr/local/bin/chromedriver")
     return webdriver.Chrome(service=service, options=chrome_options)
@@ -272,7 +280,7 @@ if __name__ == "__main__":
                 logger.info(f"当前查到的最早预约时间：_{earliest}")
             else:
                 logger.warning("暂无可预约日期，等待重试")
-                time.sleep(COOLDOWN_TIME)
+                time.sleep(get_cooldown())
                 continue
 
             date = get_available_date(dates)
@@ -280,10 +288,10 @@ if __name__ == "__main__":
             if date:
                 logger.info(f"找到更早的预约时间: {date}")
                 reschedule(date)
-                time.sleep(COOLDOWN_TIME)
+                time.sleep(get_cooldown())
             else:
                 logger.info("暂无更早的预约时间，等待重试")
-                time.sleep(COOLDOWN_TIME)
+                time.sleep(get_cooldown())
 
             if EXIT:
                 logger.info("已成功预约，退出脚本")
