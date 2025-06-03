@@ -155,7 +155,7 @@ def get_date():
 
         if response.status_code == 401 or "session expired" in response.text.lower():
             logger.warning("Session expired or unauthorized (401)，重新登录中...")
-            send_notification("Session expired or unauthorized, re-login...")
+            # send_notification("Session expired or unauthorized, re-login...")
             login()
             time.sleep(STEP_TIME)
             return get_date()
