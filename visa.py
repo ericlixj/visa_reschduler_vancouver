@@ -69,7 +69,7 @@ ACTIVE_TIME_SLOTS = [
 
 def MY_CONDITION(month, day): return True
 
-STEP_TIME = 1
+STEP_TIME = 100/1000
 RETRY_TIME = 1 * 10  # 10 秒钟
 EXCEPTION_TIME = 30
 COOLDOWN_TIME = 60
@@ -129,7 +129,7 @@ def do_login_action():
 
     Wait(driver, 60).until(EC.presence_of_element_located((By.XPATH, REGEX_CONTINUE)))
     logger.info("登录成功")
-    send_notification("登录成功!")
+    # send_notification("登录成功!")
     time.sleep(STEP_TIME)
     cookies = driver.get_cookies()
     for cookie in cookies:
@@ -150,7 +150,7 @@ def get_date():
     }
 
     try:
-        logger.info(f"📡 请求可预约日期: {DATE_URL}")
+        logger.info(f"请求可预约日期: {DATE_URL}")
         response = requests.get(DATE_URL, headers=headers, timeout=30)
 
         if response.status_code == 401 or "session expired" in response.text.lower():
@@ -203,11 +203,11 @@ def reschedule(date):
 
     r = requests.post(APPOINTMENT_URL, headers=headers, data=data)
     if "Successfully Scheduled" in r.text:
-        msg = f"🎉 预约修改成功: {date} {time_str}"
+        msg = f"预约修改成功: {date} {time_str}"
         send_notification(msg)
         EXIT = True
     else:
-        msg = f"❌ 预约修改失败: {date} {time_str}"
+        msg = f"预约修改失败: {date} {time_str}"
         send_notification(msg)
 
 def get_available_date(dates):
@@ -269,31 +269,31 @@ if __name__ == "__main__":
 
             if dates:
                 earliest = dates[0].get('date')
-                logger.info(f"📆 当前查到的最早预约时间：{earliest}")
+                logger.info(f"当前查到的最早预约时间：_{earliest}")
             else:
-                logger.warning("⚠️ 暂无可预约日期，等待重试")
+                logger.warning("暂无可预约日期，等待重试")
                 time.sleep(COOLDOWN_TIME)
                 continue
 
             date = get_available_date(dates)
 
             if date:
-                logger.info(f"🎯 找到更早的预约时间: {date}")
+                logger.info(f"找到更早的预约时间: {date}")
                 reschedule(date)
                 time.sleep(COOLDOWN_TIME)
             else:
-                logger.info("🔍 暂无更早的预约时间，等待重试")
+                logger.info("暂无更早的预约时间，等待重试")
                 time.sleep(COOLDOWN_TIME)
 
             if EXIT:
-                logger.info("✅ 已成功预约，退出脚本")
+                logger.info("已成功预约，退出脚本")
                 break
 
         except Exception as e:
-            logger.error(f"❌ 脚本异常: {e}")
+            logger.error(f"脚本异常: {e}")
             if "session" in str(e).lower():
                 logger.warning("Session invalid，重新登录中...")
-                send_notification("Session invalid, re-login...")
+                # send_notification("Session invalid, re-login...")
                 login()
                 time.sleep(STEP_TIME)
                 retry_count = 0
