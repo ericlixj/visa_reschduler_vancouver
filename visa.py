@@ -191,6 +191,9 @@ def reschedule(date):
     global EXIT
     logger.info(f"尝试重新预约: {date}")
 
+    trying_msg = f"TRY to reschedule visa appointment：{date}"
+    send_notification(trying_msg)
+
     time_str = get_time(date)
     driver.get(APPOINTMENT_URL)
 
