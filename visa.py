@@ -174,7 +174,7 @@ def get_date():
         return date_data
 
     except requests.exceptions.RequestException as e:
-        logger.warning(f"⚠️ 请求异常: {e}")
+        logger.warning(f"请求异常: {e}")
         time.sleep(STEP_TIME * 3)
         return get_date()
 
