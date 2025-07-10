@@ -219,24 +219,12 @@ def reschedule(date):
         msg = f"预约修改失败: {date} {time_str}"
         send_notification(msg)
 
-def get_available_date(dates):
-    global last_seen
-
-    def is_earlier(date):
-        my_date = datetime.strptime(MY_SCHEDULE_DATE, "%Y-%m-%d")
-        new_date = datetime.strptime(date, "%Y-%m-%d")
-        result = my_date > new_date
-        logger.info(f"是否找到更早时间: {my_date} > {new_date} = {result}")
-        return result
-
-    logger.info("正在检查是否有更早日期")
-    for d in dates:
-        date = d.get('date')
-        if is_earlier(date) and date != last_seen:
-            _, month, day = date.split('-')
-            if MY_CONDITION(month, day):
-                last_seen = date
-                return date
+def is_earlier(date_str):
+    my_date = datetime.strptime(MY_SCHEDULE_DATE, "%Y-%m-%d")
+    new_date = datetime.strptime(date_str, "%Y-%m-%d")
+    result = my_date > new_date
+    logger.info(f"是否找到更早时间: {my_date} > {new_date} = {result}")
+    return result
 
 def within_active_time():
     now_hour = datetime.now().hour
@@ -278,20 +266,17 @@ if __name__ == "__main__":
 
             if dates:
                 earliest = dates[0].get('date')
-                logger.info(f"当前查到的最早预约时间：_{earliest}")
+                logger.info(f"当前查到的最早预约时间：{earliest}")
+
+                if is_earlier(earliest):
+                    logger.info(f"找到比预期更早的预约时间: {earliest}")
+                    reschedule(earliest)
+                    time.sleep(get_cooldown())
+                else:
+                    logger.info("暂无更早的预约时间，等待重试")
+                    time.sleep(get_cooldown())
             else:
                 logger.warning("暂无可预约日期，等待重试")
-                time.sleep(get_cooldown())
-                continue
-
-            date = get_available_date(dates)
-
-            if date:
-                logger.info(f"找到更早的预约时间: {date}")
-                reschedule(date)
-                time.sleep(get_cooldown())
-            else:
-                logger.info("暂无更早的预约时间，等待重试")
                 time.sleep(get_cooldown())
 
             if EXIT:
