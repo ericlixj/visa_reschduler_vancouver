@@ -179,13 +179,30 @@ def get_date():
         return get_date()
 
 def get_time(date):
+    cookie_dict = {c['name']: c['value'] for c in driver.get_cookies()}
+    cookie_string = "; ".join([f"{k}={v}" for k, v in cookie_dict.items()])
+
+    headers = {
+        "User-Agent": driver.execute_script("return navigator.userAgent;"),
+        "Referer": f"https://ais.usvisa-info.com/{COUNTRY_CODE}/niv/schedule/{SCHEDULE_ID}",
+        "X-Requested-With": "XMLHttpRequest",
+        "Cookie": cookie_string
+    }
+
     time_url = TIME_URL % date
-    driver.get(time_url)
-    content = driver.find_element(By.TAG_NAME, 'pre').text
-    data = json.loads(content)
-    time_str = data.get("available_times")[-1]
-    logger.info(f"获取时间成功: {date} {time_str}")
-    return time_str
+    try:
+        logger.info(f"请求预约时间: {time_url}")
+        response = requests.get(time_url, headers=headers, timeout=30)
+        logger.info(f"预约时间响应状态码: {response.status_code}")
+        logger.debug(f"预约时间响应内容: {response.text[:500]}")
+        response.raise_for_status()
+        data = response.json()
+        time_str = data.get("available_times")[-1]
+        logger.info(f"获取时间成功: {date} {time_str}")
+        return time_str
+    except Exception as e:
+        logger.error(f"⚠️ 获取预约时间失败: {e}")
+        raise
 
 def reschedule(date):
     global EXIT
