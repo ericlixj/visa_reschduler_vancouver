@@ -60,11 +60,7 @@ REGEX_CONTINUE = "//a[contains(text(),'Continue')]"
 
 ACTIVE_TIME_SLOTS = [
     (0, 24),    # 凌晨 slot 重置
-    (5, 7),    # 清晨系统处理
-    (8, 10),   # 上午使馆工作时间开始
-    (11, 13),  # 中午可能释放 slot
-    (15, 18),  # 下午美国办公时间段
-    (20, 22),  # 晚上高峰期
+
 ]
 
 
@@ -212,32 +208,7 @@ def reschedule(date):
     send_notification(trying_msg)
 
     time_str = get_time(date)
-    driver.get(APPOINTMENT_URL)
-
-    data = {
-        "utf8": driver.find_element(by=By.NAME, value='utf8').get_attribute('value'),
-        "authenticity_token": driver.find_element(by=By.NAME, value='authenticity_token').get_attribute('value'),
-        "confirmed_limit_message": driver.find_element(by=By.NAME, value='confirmed_limit_message').get_attribute('value'),
-        "use_consulate_appointment_capacity": driver.find_element(by=By.NAME, value='use_consulate_appointment_capacity').get_attribute('value'),
-        "appointments[consulate_appointment][facility_id]": FACILITY_ID,
-        "appointments[consulate_appointment][date]": date,
-        "appointments[consulate_appointment][time]": time_str,
-    }
-
-    headers = {
-        "User-Agent": driver.execute_script("return navigator.userAgent;"),
-        "Referer": APPOINTMENT_URL,
-        "Cookie": "_yatri_session=" + driver.get_cookie("_yatri_session")["value"]
-    }
-
-    r = requests.post(APPOINTMENT_URL, headers=headers, data=data)
-    if "Successfully Scheduled" in r.text:
-        msg = f"预约修改成功: {date} {time_str}"
-        send_notification(msg)
-        EXIT = True
-    else:
-        msg = f"预约修改失败: {date} {time_str}"
-        send_notification(msg)
+    logger.info(f"获取预约时间成功: {date} {time_str}")
 
 def is_earlier(date_str):
     my_date = datetime.strptime(MY_SCHEDULE_DATE, "%Y-%m-%d")
