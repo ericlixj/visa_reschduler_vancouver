@@ -87,7 +87,8 @@ def send_notification(msg):
     logger.info(f"发送通知: {msg}")
     subject = "Visa Appointment Notification"
     send_email(subject, msg)
-    
+
+import tempfile
 def get_driver():
     from selenium import webdriver
     from selenium.webdriver.chrome.service import Service
@@ -95,6 +96,8 @@ def get_driver():
 
     chrome_options = Options()
     chrome_options.binary_location = "/opt/chrome/chrome"
+    tmp_profile_dir = tempfile.mkdtemp(prefix="chrome-profile-")
+    chrome_options.add_argument(f"--user-data-dir={tmp_profile_dir}")
 
     chrome_options.add_argument("--headless=new")  # 更稳定
     chrome_options.add_argument("--no-sandbox")
@@ -106,7 +109,7 @@ def get_driver():
     chrome_options.add_argument("--disable-sync")
     chrome_options.add_argument("--metrics-recording-only")
     chrome_options.add_argument("--mute-audio")
-    chrome_options.add_argument("--user-data-dir=/tmp/chrome-profile")
+    chrome_options.add_argument(f"--user-data-dir={tmp_profile_dir}")
 
     service = Service("/usr/local/bin/chromedriver")
 
