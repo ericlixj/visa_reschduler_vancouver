@@ -91,12 +91,12 @@ def send_notification(msg):
 
 
 import tempfile
-import subprocess
+import random
+from selenium import webdriver
+from selenium.webdriver.chrome.service import Service
+from selenium.webdriver.chrome.options import Options
 
 def get_driver():
-    # 先杀掉残留进程，防止占用
-    subprocess.run(["pkill", "-f", "chrome"])
-
     chrome_options = Options()
     chrome_options.add_argument("--headless")
     chrome_options.add_argument("--disable-gpu")
@@ -104,19 +104,16 @@ def get_driver():
     chrome_options.add_argument("--disable-dev-shm-usage")
     chrome_options.add_argument("window-size=1920,1080")
 
-    temp_dir = tempfile.mkdtemp(prefix="chrome-user-data-")
-    chrome_options.add_argument(f"--user-data-dir={temp_dir}")
+    # ✅ 指定一个独立临时目录，避免默认目录冲突
+    temp_user_dir = tempfile.mkdtemp(prefix="chrome-user-")
+    chrome_options.add_argument(f"--user-data-dir={temp_user_dir}")
 
-    USER_AGENTS = [
-        "Mozilla/5.0 (Windows NT 10.0; Win64; x64)...",
-        "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)...",
-        "Mozilla/5.0 (X11; Linux x86_64)...",
-    ]
-    chrome_options.add_argument(f"user-agent={random.choice(USER_AGENTS)}")
-
+    # Optional: 修改为你自己的 chrome 安装位置
     chrome_options.binary_location = "/opt/chrome/chrome"
+
     service = Service("/usr/local/bin/chromedriver")
     return webdriver.Chrome(service=service, options=chrome_options)
+
 
 
 
