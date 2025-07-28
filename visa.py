@@ -98,9 +98,9 @@ def get_driver():
     chrome_options.add_argument("--no-sandbox")
     chrome_options.add_argument("--disable-dev-shm-usage")
     chrome_options.add_argument("window-size=1920,1080")
-    
-    # 给Chrome指定一个临时独立的用户数据目录
-    temp_user_data_dir = tempfile.mkdtemp()
+
+    # 这里创建一个随机的临时目录作为用户数据目录，确保每次启动唯一
+    temp_user_data_dir = tempfile.mkdtemp(prefix="chrome-user-data-")
     chrome_options.add_argument(f"--user-data-dir={temp_user_data_dir}")
 
     USER_AGENTS = [
@@ -112,7 +112,9 @@ def get_driver():
 
     chrome_options.binary_location = "/opt/chrome/chrome"
     service = Service("/usr/local/bin/chromedriver")
+
     return webdriver.Chrome(service=service, options=chrome_options)
+
 
 
 driver = None
