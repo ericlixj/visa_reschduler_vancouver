@@ -19,6 +19,7 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.chrome.options import Options
 
 from sendmail import send_email
+import tempfile
 
 # 日志配置
 log_dir = '/root/deploy/logs'
@@ -88,6 +89,8 @@ def send_notification(msg):
     subject = "Visa Appointment Notification"
     send_email(subject, msg)
 
+
+
 def get_driver():
     chrome_options = Options()
     chrome_options.add_argument("--headless")
@@ -95,6 +98,11 @@ def get_driver():
     chrome_options.add_argument("--no-sandbox")
     chrome_options.add_argument("--disable-dev-shm-usage")
     chrome_options.add_argument("window-size=1920,1080")
+    
+    # 给Chrome指定一个临时独立的用户数据目录
+    temp_user_data_dir = tempfile.mkdtemp()
+    chrome_options.add_argument(f"--user-data-dir={temp_user_data_dir}")
+
     USER_AGENTS = [
         "Mozilla/5.0 (Windows NT 10.0; Win64; x64)...",
         "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)...",
@@ -102,10 +110,10 @@ def get_driver():
     ]
     chrome_options.add_argument(f"user-agent={random.choice(USER_AGENTS)}")
 
-    chrome_options.binary_location = "/opt/chrome/chrome"  # 指定你的chrome路径
-
-    service = Service("/usr/local/bin/chromedriver")      # 指定chromedriver路径
+    chrome_options.binary_location = "/opt/chrome/chrome"
+    service = Service("/usr/local/bin/chromedriver")
     return webdriver.Chrome(service=service, options=chrome_options)
+
 
 driver = None
 
