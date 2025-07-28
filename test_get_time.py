@@ -17,7 +17,7 @@ from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.ui import WebDriverWait as Wait
 from selenium.webdriver.common.by import By
 from selenium.webdriver.chrome.options import Options
-import tempfile
+
 from sendmail import send_email
 
 # 日志配置
@@ -60,11 +60,7 @@ REGEX_CONTINUE = "//a[contains(text(),'Continue')]"
 
 ACTIVE_TIME_SLOTS = [
     (0, 24),    # 凌晨 slot 重置
-    (5, 7),    # 清晨系统处理
-    (8, 10),   # 上午使馆工作时间开始
-    (11, 13),  # 中午可能释放 slot
-    (15, 18),  # 下午美国办公时间段
-    (20, 22),  # 晚上高峰期
+
 ]
 
 
@@ -88,29 +84,21 @@ def send_notification(msg):
     subject = "Visa Appointment Notification"
     send_email(subject, msg)
 
-import tempfile
 def get_driver():
-    from selenium import webdriver
-    from selenium.webdriver.chrome.service import Service
-    from selenium.webdriver.chrome.options import Options
-
     chrome_options = Options()
-    chrome_options.binary_location = "/opt/chrome/chrome"
-    tmp_profile_dir = tempfile.mkdtemp(prefix="chrome-profile-")
-    chrome_options.add_argument(f"--user-data-dir={tmp_profile_dir}")
-    chrome_options.add_argument("--headless=new")  # 更稳定
-    chrome_options.add_argument("--no-sandbox")
+    chrome_options.add_argument("--headless")
     chrome_options.add_argument("--disable-gpu")
+    chrome_options.add_argument("--no-sandbox")
     chrome_options.add_argument("--disable-dev-shm-usage")
-    chrome_options.add_argument("--window-size=1920,1080")
-    chrome_options.add_argument("--disable-extensions")
-    chrome_options.add_argument("--disable-background-networking")
-    chrome_options.add_argument("--disable-sync")
-    chrome_options.add_argument("--metrics-recording-only")
-    chrome_options.add_argument("--mute-audio")
+    chrome_options.add_argument("window-size=1920,1080")
+    USER_AGENTS = [
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64)...",
+        "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)...",
+        "Mozilla/5.0 (X11; Linux x86_64)...",
+    ]
+    chrome_options.add_argument(f"user-agent={random.choice(USER_AGENTS)}")
 
     service = Service("/usr/local/bin/chromedriver")
-
     return webdriver.Chrome(service=service, options=chrome_options)
 
 driver = None
@@ -124,45 +112,36 @@ def login():
     do_login_action()
 
 def do_login_action():
-    logger = logging.getLogger(__name__)
-    try:
-        logger.info("等待邮箱输入框出现")
-        Wait(driver, 30).until(EC.presence_of_element_located((By.ID, 'user_email')))
-        user = driver.find_element(By.ID, 'user_email')
-        user.clear()
-        user.send_keys(USERNAME)
-        time.sleep(random.uniform(1, 3))
+    logger.info("输入邮箱")
+    user = driver.find_element(By.ID, 'user_email')
+    user.send_keys(USERNAME)
+    time.sleep(random.randint(1, 3))
 
-        logger.info("等待密码输入框出现")
-        Wait(driver, 30).until(EC.presence_of_element_located((By.ID, 'user_password')))
-        pw = driver.find_element(By.ID, 'user_password')
-        pw.clear()
-        pw.send_keys(PASSWORD)
-        time.sleep(random.uniform(1, 3))
+    logger.info("输入密码")
+    pw = driver.find_element(By.ID, 'user_password')
+    pw.send_keys(PASSWORD)
+    time.sleep(random.randint(1, 3))
 
-        logger.info("等待隐私条款勾选框出现")
-        Wait(driver, 30).until(EC.element_to_be_clickable((By.CLASS_NAME, 'icheckbox')))
-        box = driver.find_element(By.CLASS_NAME, 'icheckbox')
-        box.click()
-        time.sleep(random.uniform(1, 3))
+    logger.info("勾选隐私条款")
+    box = driver.find_element(By.CLASS_NAME, 'icheckbox')
+    box.click()
+    time.sleep(random.randint(1, 3))
 
-        logger.info("等待登录按钮出现")
-        Wait(driver, 30).until(EC.element_to_be_clickable((By.NAME, 'commit')))
-        btn = driver.find_element(By.NAME, 'commit')
-        btn.click()
-        time.sleep(random.uniform(1, 3))
+    logger.info("点击登录")
+    btn = driver.find_element(By.NAME, 'commit')
+    btn.click()
+    time.sleep(random.randint(1, 3))
 
-        logger.info("等待登录后页面元素出现（Continue按钮）")
-        Wait(driver, 60).until(EC.presence_of_element_located((By.XPATH, REGEX_CONTINUE)))
-
-        logger.info("登录成功")
-
-    except Exception as e:
-        logger.error(f"登录过程中出错: {e}", exc_info=True)
-        screenshot_path = f"/tmp/login_error_{int(time.time())}.png"
-        driver.save_screenshot(screenshot_path)
-        logger.info(f"登录失败时截图已保存: {screenshot_path}")
-        raise
+    Wait(driver, 60).until(EC.presence_of_element_located((By.XPATH, REGEX_CONTINUE)))
+    logger.info("登录成功")
+    # send_notification("登录成功!")
+    time.sleep(STEP_TIME)
+    cookies = driver.get_cookies()
+    for cookie in cookies:
+        if cookie['name'] == '_yatri_session':
+            yatri_session = cookie['value']
+            # logger.info(f"_yatri_session={yatri_session}")
+            break
 
 def get_date():
     cookie_dict = {c['name']: c['value'] for c in driver.get_cookies()}
@@ -229,32 +208,7 @@ def reschedule(date):
     send_notification(trying_msg)
 
     time_str = get_time(date)
-    driver.get(APPOINTMENT_URL)
-
-    data = {
-        "utf8": driver.find_element(by=By.NAME, value='utf8').get_attribute('value'),
-        "authenticity_token": driver.find_element(by=By.NAME, value='authenticity_token').get_attribute('value'),
-        "confirmed_limit_message": driver.find_element(by=By.NAME, value='confirmed_limit_message').get_attribute('value'),
-        "use_consulate_appointment_capacity": driver.find_element(by=By.NAME, value='use_consulate_appointment_capacity').get_attribute('value'),
-        "appointments[consulate_appointment][facility_id]": FACILITY_ID,
-        "appointments[consulate_appointment][date]": date,
-        "appointments[consulate_appointment][time]": time_str,
-    }
-
-    headers = {
-        "User-Agent": driver.execute_script("return navigator.userAgent;"),
-        "Referer": APPOINTMENT_URL,
-        "Cookie": "_yatri_session=" + driver.get_cookie("_yatri_session")["value"]
-    }
-
-    r = requests.post(APPOINTMENT_URL, headers=headers, data=data)
-    if "Successfully Scheduled" in r.text:
-        msg = f"预约修改成功: {date} {time_str}"
-        send_notification(msg)
-        EXIT = True
-    else:
-        msg = f"预约修改失败: {date} {time_str}"
-        send_notification(msg)
+    logger.info(f"获取预约时间成功: {date} {time_str}")
 
 def is_earlier(date_str):
     my_date = datetime.strptime(MY_SCHEDULE_DATE, "%Y-%m-%d")
