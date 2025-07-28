@@ -95,12 +95,18 @@ def get_driver():
     chrome_options.add_argument("--no-sandbox")
     chrome_options.add_argument("--disable-dev-shm-usage")
     chrome_options.add_argument("window-size=1920,1080")
+
     USER_AGENTS = [
         "Mozilla/5.0 (Windows NT 10.0; Win64; x64)...",
         "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)...",
         "Mozilla/5.0 (X11; Linux x86_64)...",
     ]
     chrome_options.add_argument(f"user-agent={random.choice(USER_AGENTS)}")
+
+    # 使用临时目录解决 user-data-dir 冲突问题
+    import tempfile
+    tmp_profile_dir = tempfile.mkdtemp(prefix="chrome-profile-")
+    chrome_options.add_argument(f"--user-data-dir={tmp_profile_dir}")
 
     service = Service("/usr/local/bin/chromedriver")
     return webdriver.Chrome(service=service, options=chrome_options)
