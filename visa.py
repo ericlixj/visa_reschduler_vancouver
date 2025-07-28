@@ -17,6 +17,8 @@ from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.ui import WebDriverWait as Wait
 from selenium.webdriver.common.by import By
 from selenium.webdriver.chrome.options import Options
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
 
 from sendmail import send_email
 
@@ -126,6 +128,8 @@ def login():
     do_login_action()
 
 def do_login_action():
+    logger.info("等待邮箱输入框出现...")
+    WebDriverWait(driver, 30).until(EC.presence_of_element_located((By.ID, 'user_email')))    
     logger.info("输入邮箱")
     user = driver.find_element(By.ID, 'user_email')
     user.send_keys(USERNAME)
