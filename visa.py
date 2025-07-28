@@ -99,10 +99,6 @@ def get_driver():
     chrome_options.add_argument("--disable-dev-shm-usage")
     chrome_options.add_argument("window-size=1920,1080")
 
-    # 这里创建一个随机的临时目录作为用户数据目录，确保每次启动唯一
-    temp_user_data_dir = tempfile.mkdtemp(prefix="chrome-user-data-")
-    chrome_options.add_argument(f"--user-data-dir={temp_user_data_dir}")
-
     USER_AGENTS = [
         "Mozilla/5.0 (Windows NT 10.0; Win64; x64)...",
         "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)...",
@@ -110,10 +106,13 @@ def get_driver():
     ]
     chrome_options.add_argument(f"user-agent={random.choice(USER_AGENTS)}")
 
+    # 不要设置 binary_location，除非你用的是独立chrome
+    # 如果用独立chrome，还是需要设置
     chrome_options.binary_location = "/opt/chrome/chrome"
-    service = Service("/usr/local/bin/chromedriver")
 
+    service = Service("/usr/local/bin/chromedriver")
     return webdriver.Chrome(service=service, options=chrome_options)
+
 
 
 
