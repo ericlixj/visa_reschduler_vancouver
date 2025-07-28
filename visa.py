@@ -59,7 +59,7 @@ REGEX_CONTINUE = "//a[contains(text(),'Continue')]"
 # 示例为：(起始小时, 结束小时)，表示每天在这些时间段内刷 slot
 
 ACTIVE_TIME_SLOTS = [
-    (0, 24),    # 凌晨 slot 重置
+    (0, 2),    # 凌晨 slot 重置
     (5, 7),    # 清晨系统处理
     (8, 10),   # 上午使馆工作时间开始
     (11, 13),  # 中午可能释放 slot
