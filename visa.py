@@ -17,8 +17,6 @@ from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.ui import WebDriverWait as Wait
 from selenium.webdriver.common.by import By
 from selenium.webdriver.chrome.options import Options
-from selenium.webdriver.support.ui import WebDriverWait
-from selenium.webdriver.support import expected_conditions as EC
 
 from sendmail import send_email
 
@@ -100,7 +98,6 @@ def get_driver():
     chrome_options.binary_location = "/opt/chrome/chrome"
     tmp_profile_dir = tempfile.mkdtemp(prefix="chrome-profile-")
     chrome_options.add_argument(f"--user-data-dir={tmp_profile_dir}")
-
     chrome_options.add_argument("--headless=new")  # 更稳定
     chrome_options.add_argument("--no-sandbox")
     chrome_options.add_argument("--disable-gpu")
@@ -111,7 +108,6 @@ def get_driver():
     chrome_options.add_argument("--disable-sync")
     chrome_options.add_argument("--metrics-recording-only")
     chrome_options.add_argument("--mute-audio")
-    chrome_options.add_argument(f"--user-data-dir={tmp_profile_dir}")
 
     service = Service("/usr/local/bin/chromedriver")
 
@@ -128,38 +124,45 @@ def login():
     do_login_action()
 
 def do_login_action():
-    logger.info("等待邮箱输入框出现...")
-    WebDriverWait(driver, 30).until(EC.presence_of_element_located((By.ID, 'user_email')))    
-    logger.info("输入邮箱")
-    user = driver.find_element(By.ID, 'user_email')
-    user.send_keys(USERNAME)
-    time.sleep(random.randint(1, 3))
+    logger = logging.getLogger(__name__)
+    try:
+        logger.info("等待邮箱输入框出现")
+        Wait(driver, 30).until(EC.presence_of_element_located((By.ID, 'user_email')))
+        user = driver.find_element(By.ID, 'user_email')
+        user.clear()
+        user.send_keys(USERNAME)
+        time.sleep(random.uniform(1, 3))
 
-    logger.info("输入密码")
-    pw = driver.find_element(By.ID, 'user_password')
-    pw.send_keys(PASSWORD)
-    time.sleep(random.randint(1, 3))
+        logger.info("等待密码输入框出现")
+        Wait(driver, 30).until(EC.presence_of_element_located((By.ID, 'user_password')))
+        pw = driver.find_element(By.ID, 'user_password')
+        pw.clear()
+        pw.send_keys(PASSWORD)
+        time.sleep(random.uniform(1, 3))
 
-    logger.info("勾选隐私条款")
-    box = driver.find_element(By.CLASS_NAME, 'icheckbox')
-    box.click()
-    time.sleep(random.randint(1, 3))
+        logger.info("等待隐私条款勾选框出现")
+        Wait(driver, 30).until(EC.element_to_be_clickable((By.CLASS_NAME, 'icheckbox')))
+        box = driver.find_element(By.CLASS_NAME, 'icheckbox')
+        box.click()
+        time.sleep(random.uniform(1, 3))
 
-    logger.info("点击登录")
-    btn = driver.find_element(By.NAME, 'commit')
-    btn.click()
-    time.sleep(random.randint(1, 3))
+        logger.info("等待登录按钮出现")
+        Wait(driver, 30).until(EC.element_to_be_clickable((By.NAME, 'commit')))
+        btn = driver.find_element(By.NAME, 'commit')
+        btn.click()
+        time.sleep(random.uniform(1, 3))
 
-    Wait(driver, 60).until(EC.presence_of_element_located((By.XPATH, REGEX_CONTINUE)))
-    logger.info("登录成功")
-    # send_notification("登录成功!")
-    time.sleep(STEP_TIME)
-    cookies = driver.get_cookies()
-    for cookie in cookies:
-        if cookie['name'] == '_yatri_session':
-            yatri_session = cookie['value']
-            # logger.info(f"_yatri_session={yatri_session}")
-            break
+        logger.info("等待登录后页面元素出现（Continue按钮）")
+        Wait(driver, 60).until(EC.presence_of_element_located((By.XPATH, REGEX_CONTINUE)))
+
+        logger.info("登录成功")
+
+    except Exception as e:
+        logger.error(f"登录过程中出错: {e}", exc_info=True)
+        screenshot_path = f"/tmp/login_error_{int(time.time())}.png"
+        driver.save_screenshot(screenshot_path)
+        logger.info(f"登录失败时截图已保存: {screenshot_path}")
+        raise
 
 def get_date():
     cookie_dict = {c['name']: c['value'] for c in driver.get_cookies()}
