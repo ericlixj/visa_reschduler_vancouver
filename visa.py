@@ -87,37 +87,30 @@ def send_notification(msg):
     logger.info(f"发送通知: {msg}")
     subject = "Visa Appointment Notification"
     send_email(subject, msg)
-
-
-
-import tempfile
-import random
-from selenium import webdriver
-from selenium.webdriver.chrome.service import Service
-from selenium.webdriver.chrome.options import Options
-
+    
 def get_driver():
+    from selenium import webdriver
+    from selenium.webdriver.chrome.service import Service
+    from selenium.webdriver.chrome.options import Options
+
     chrome_options = Options()
-    chrome_options.add_argument("--headless")
-    chrome_options.add_argument("--disable-gpu")
-    chrome_options.add_argument("--no-sandbox")
-    chrome_options.add_argument("--disable-dev-shm-usage")
-    chrome_options.add_argument("window-size=1920,1080")
-
-    # ✅ 指定一个独立临时目录，避免默认目录冲突
-    temp_user_dir = tempfile.mkdtemp(prefix="chrome-user-")
-    chrome_options.add_argument(f"--user-data-dir={temp_user_dir}")
-
-    # Optional: 修改为你自己的 chrome 安装位置
     chrome_options.binary_location = "/opt/chrome/chrome"
 
+    chrome_options.add_argument("--headless=new")  # 更稳定
+    chrome_options.add_argument("--no-sandbox")
+    chrome_options.add_argument("--disable-gpu")
+    chrome_options.add_argument("--disable-dev-shm-usage")
+    chrome_options.add_argument("--window-size=1920,1080")
+    chrome_options.add_argument("--disable-extensions")
+    chrome_options.add_argument("--disable-background-networking")
+    chrome_options.add_argument("--disable-sync")
+    chrome_options.add_argument("--metrics-recording-only")
+    chrome_options.add_argument("--mute-audio")
+    chrome_options.add_argument("--user-data-dir=/tmp/chrome-profile")
+
     service = Service("/usr/local/bin/chromedriver")
+
     return webdriver.Chrome(service=service, options=chrome_options)
-
-
-
-
-
 
 driver = None
 
