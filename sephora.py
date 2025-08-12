@@ -5,6 +5,8 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 import sys
 import time
+import tempfile
+import os
 
 def add_cookies_from_string(driver, cookie_string, domain):
     """
@@ -32,6 +34,8 @@ def add_cookies_from_string(driver, cookie_string, domain):
 
 def scrape_sephora_product(url):
     options = Options()
+    temp_dir = tempfile.mkdtemp()
+    options.add_argument(f"--user-data-dir={temp_dir}")
     options.headless = True
     options.add_argument("--disable-gpu")
     options.add_argument("--no-sandbox")
