@@ -1,27 +1,30 @@
 from selenium import webdriver
+from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.chrome.options import Options
-import tempfile
+import time
 
-def scrape_sephora_product(url):
-    options = Options()
-    temp_dir = tempfile.mkdtemp()
-    options.add_argument(f"--user-data-dir={temp_dir}")
-    print(f"Using temp user data dir: {temp_dir}")
+# Chrome 启动参数
+chrome_options = Options()
+chrome_options.add_argument("--headless")  # 无界面模式
+chrome_options.add_argument("--no-sandbox")  # root 用户必须加
+chrome_options.add_argument("--disable-dev-shm-usage")  # 避免 /dev/shm 空间不足
+chrome_options.add_argument("--disable-gpu")
+chrome_options.add_argument("--window-size=1920,1080")
 
-    # root 用户必须加 --no-sandbox
-    options.add_argument("--no-sandbox")
-    options.add_argument("--headless=new")  # 使用新 headless 模式
-    options.add_argument("--disable-gpu")
-    options.add_argument("--window-size=1920,1080")
-    options.add_argument(
-        "user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
-        "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.7258.127 Safari/537.36"
-    )
+# ChromeDriver 路径（如果已在 PATH 中可以不写）
+service = Service("/usr/local/bin/chromedriver")
 
-    driver = webdriver.Chrome(options=options)
+# 创建 driver
+driver = webdriver.Chrome(service=service, options=chrome_options)
 
-    try:
-        driver.get(url)
-        print("页面标题:", driver.title)
-    finally:
-        driver.quit()
+try:
+    # 打开 google.com
+    driver.get("https://www.google.com")
+
+    # 等待页面加载
+    time.sleep(2)
+
+    # 输出页面 HTML
+    print(driver.page_source)
+finally:
+    driver.quit()
