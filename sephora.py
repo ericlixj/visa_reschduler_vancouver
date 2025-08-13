@@ -19,7 +19,11 @@ def check_chrome_env():
     chrome_options.add_argument("--disable-gpu")
     chrome_options.add_argument("--disable-software-rasterizer")
     chrome_options.add_argument("--window-size=1280,800")
-    chrome_options.add_argument("--user-data-dir=/tmp/chrome-profile-test")  # 防止 profile 冲突
+    import tempfile
+
+    profile_dir = tempfile.mkdtemp(prefix="chrome_profile_")
+    chrome_options.add_argument(f"--user-data-dir={profile_dir}")
+
     
     try:
         service = Service(CHROMEDRIVER_PATH)
