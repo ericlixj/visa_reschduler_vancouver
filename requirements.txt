@@ -1,4 +1,5 @@
-selenium==4.2.0
-webdriver-manager==3.7.0
-requests==2.27.1
-sendgrid==6.9.7
+selenium==4.35.0          # 最新稳定版，支持 Chrome 139+
+webdriver-manager==3.8.6  # 对应 Selenium 4，自动管理 ChromeDriver
+requests==2.31.0          # 支持 urllib3 2.x，不会冲突
+sendgrid==6.9.7            # 保持不变
+urllib3==2.5.0             # 与 requests 2.31.0 兼容
