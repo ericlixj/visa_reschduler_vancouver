@@ -7,14 +7,9 @@ import tempfile
 def test_chrome_selenium():
     chrome_options = Options()
     chrome_options.add_argument("--headless=new")           # 无头模式
-    chrome_options.add_argument("--no-sandbox")             # root 用户必须
     chrome_options.add_argument("--disable-dev-shm-usage")  # /dev/shm 太小时避免崩溃
     chrome_options.add_argument("--disable-gpu")
     chrome_options.add_argument("--window-size=1280,800")
-
-    # 使用临时目录作为 user-data-dir，避免冲突
-    tmp_profile = tempfile.mkdtemp()
-    chrome_options.add_argument(f"--user-data-dir={tmp_profile}")
 
     # Chromedriver 路径
     service = Service("/usr/local/bin/chromedriver")
