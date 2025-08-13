@@ -2,7 +2,7 @@
 
 # 切换到项目目录
 cd /data/deploy/work/visa_reschduler_vancouver || exit 1
-
+source venv/bin/activate
 # 进程名称
 PROCESS_NAME="visa.py"
 
