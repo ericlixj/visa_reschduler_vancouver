@@ -35,9 +35,10 @@ def add_cookies_from_string(driver, cookie_string, domain):
 def scrape_sephora_product(url):
     options = Options()
     temp_dir = tempfile.mkdtemp()
-    options.add_argument(f"--user-data-dir={temp_dir}")
-    print(f"Using temp user data dir: {temp_dir}")
+    # options.add_argument(f"--user-data-dir={temp_dir}")
+    # print(f"Using temp user data dir: {temp_dir}")
     options.headless = True
+    options.add_argument("--headless=new")
     options.add_argument("--disable-gpu")
     options.add_argument("--no-sandbox")
     options.add_argument("--window-size=1920,1080")
