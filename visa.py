@@ -202,13 +202,22 @@ def get_time(date):
         logger.info(f"预约时间响应状态码: {response.status_code}")
         logger.debug(f"预约时间响应内容: {response.text[:500]}")
         response.raise_for_status()
+
         data = response.json()
-        time_str = data.get("available_times")[-1]
+        available_times = data.get("available_times", [])
+
+        if not available_times:
+            logger.warning(f"{date} 没有可预约时间，响应数据: {data}")
+            return None
+
+        time_str = available_times[-1]  # 取最后一个时间
         logger.info(f"获取时间成功: {date} {time_str}")
         return time_str
-    except Exception as e:
-        logger.error(f"⚠️ 获取预约时间失败: {e}")
-        raise
+
+    except requests.exceptions.RequestException as e:
+        logger.warning(f"请求异常: {e}")
+        time.sleep(STEP_TIME * 3)
+        return get_time(date)
 
 def reschedule(date):
     global EXIT
@@ -219,6 +228,15 @@ def reschedule(date):
 
     time_str = get_time(date)
     driver.get(APPOINTMENT_URL)
+    logger.info(f"当前页面URL: {driver.current_url}")
+
+    # 等待页面加载表单
+    try:
+        Wait(driver, 15).until(EC.presence_of_element_located((By.NAME, "utf8")))
+    except:
+        logger.error("未找到表单字段 utf8，可能页面跳转或会话过期")
+        logger.debug(driver.page_source)
+        return    
 
     data = {
         "utf8": driver.find_element(by=By.NAME, value='utf8').get_attribute('value'),
